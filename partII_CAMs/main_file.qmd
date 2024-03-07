@@ -1,11 +1,16 @@
 ---
 title: "Main File for part II of basal attributes article"
-author: "Julius Fenn"
+author: "Julius Fenn, Paul Sölder"
 format:
   html:
     toc: true
     toc-depth: 3
     html-math-method: katex
+    number-sections: true
+    other-links:
+      - text: Document in Progress
+        icon: file-code
+        href: https://docs.google.com/document/d/1J7EBsN-mWyDz536As3Wbl64uRrWhvAf-0QwuaxY1CKQ/edit?usp=sharing
 ---
 
 ```{r}
@@ -93,8 +98,8 @@ file.remove(paste0(tmp_file_from, "/postCAM.txt"))
 ########################################
 # load functions
 ########################################
-print(getwd())
-setwd("../../../functions")
+# print(getwd())
+setwd("../functions")
 for(i in 1:length(dir())){
   # print(dir()[i])
   source(dir()[i], encoding = "utf-8")
@@ -449,7 +454,7 @@ for(i in 1:3){
 
 
 ```{r saveCAMs_pictures_pre, message = FALSE}
-save_CAMs_as_pictures = TRUE
+save_CAMs_as_pictures = FALSE
 
 if(save_CAMs_as_pictures){
   setwd("outputs")
