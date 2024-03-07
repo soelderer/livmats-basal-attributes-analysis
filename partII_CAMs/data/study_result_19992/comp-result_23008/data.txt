@@ -1,0 +1,1 @@
+{"idCAM":"2000f35b-53d4-4215-b673-7f4d299fe635","creator":"62f540c0-0b5f-4182-befa-0a6bc2dd8980","projectCAM":"CAMspiracy t2 Germany CAM","defocusCAM":null,"date":1709140249259,"nodes":[],"connectors":[],"currentID":null,"currentNode":null,"hasSelectedNode":false,"currentConnector":null,"hasSelectedConnector":false,"readyToMove":false,"isIncoming":false}
