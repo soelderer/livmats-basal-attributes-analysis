@@ -62,7 +62,7 @@ questionnairetype <- function(dataset,
 ########################################
 # get descriptive statistics
 ########################################
-getDescriptives <- function(dataset = questionnaire, regEx,
+getDescriptivesSurvey <- function(dataset = questionnaire, regEx,
                             sorted = TRUE,
                             nameAPAtable = NULL){
   x <- dataset[, str_detect(string = colnames(dataset),

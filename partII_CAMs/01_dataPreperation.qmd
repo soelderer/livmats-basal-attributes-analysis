@@ -1,5 +1,5 @@
 ---
-title: "Main File for part II of basal attributes article"
+title: "Data preperation part II of basal attributes article"
 author: "Julius Fenn, Paul Sölder"
 format:
   html:
@@ -7,38 +7,35 @@ format:
     toc-depth: 3
     html-math-method: katex
     number-sections: true
-    code-links:
-      - text: Document in Progress
-        icon: file-code
-        href: https://docs.google.com/document/d/1J7EBsN-mWyDz536As3Wbl64uRrWhvAf-0QwuaxY1CKQ/edit?usp=sharing
 ---
 
+
+# Notes
+
+
+# create raw data files
+
+
+
 ```{r}
-#| echo: false
+#| label: create raw files
 #| warning: false
-#| results: hide
 
 # sets the directory of location of this script as the current directory
 # setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-########################################
-# load packages
-########################################
+### load packages
 require(pacman)
 p_load('tidyverse', 'jsonlite', 'magrittr', 'xlsx',
        'stargazer', 'psych', 'jtools', 'DT', 'ggstatsplot', 
        'lavaan', 
        'regsem', 'MplusAutomation', 'igraph')
 
-########################################
-# list data files
-########################################
+### list data files
 setwd("data")
 folders <- list.files(pattern = "^study_result.*")
 
-########################################
-# create data files - GERMANY
-########################################
+### create data files
 ### get CAM data
 writeLines("", "CAMdata.txt") # create file
 text_connection <- file("CAMdata.txt", "a") # open connection to append
@@ -80,12 +77,10 @@ close(text_connection) # close connection CAM
 close(text_connection_pre) # close connection
 close(text_connection_post) # close connection
 
-########################################
-# move files to output folder
-########################################
-### copy files (not overwritten)
+### move files to output folder
+# copy files (not overwritten)
 tmp_file_from <-  getwd()
-setwd("../outputs")
+setwd("../outputs/01_dataPreperation")
 file.copy(from =  paste0(tmp_file_from, "/CAMdata.txt"), to = paste0(getwd(), "/CAMdata.txt"))
 file.copy(from =  paste0(tmp_file_from, "/preCAM.txt"), to = paste0(getwd(), "/preCAM.txt"))
 file.copy(from =  paste0(tmp_file_from, "/postCAM.txt"), to = paste0(getwd(), "/postCAM.txt"))
@@ -95,11 +90,9 @@ file.remove(paste0(tmp_file_from, "/CAMdata.txt"))
 file.remove(paste0(tmp_file_from, "/preCAM.txt"))
 file.remove(paste0(tmp_file_from, "/postCAM.txt"))
 
-########################################
-# load functions
-########################################
-# print(getwd())
-setwd("functions")
+
+### load functions
+setwd("../../functions")
 for(i in 1:length(dir())){
   # print(dir()[i])
   source(dir()[i], encoding = "utf-8")
@@ -115,7 +108,7 @@ rm(i)
 
 
 
-# summary function
+### summary function
 data_summary <- function(data, varname, groupnames){
   require(plyr)
   summary_func <- function(x, col){
@@ -129,16 +122,15 @@ data_summary <- function(data, varname, groupnames){
 }
 ```
 
-# Notes
 
-
-# prepare data
-
-## set up data.frame questionnaires
+# set up data.frame questionnaires
 
 
 ```{r}
-setwd("outputs")
+#| label: create questionnaires files
+#| warning: false
+
+setwd("outputs/01_dataPreperation")
 # > pre study
 suppressMessages(read_file('preCAM.txt') %>%
                    # ... split it into lines ...
@@ -148,7 +140,7 @@ suppressMessages(read_file('preCAM.txt') %>%
                    discard(function(x) x == '\r') %>%
                    # ... parse JSON into a data.frame
                    map_dfr(fromJSON, flatten=TRUE)) -> dat_preCAM
-# > post first CAM
+# > post CAM
 read_file('postCAM.txt') %>%
                    # ... split it into lines ...
                    str_split('\n') %>% first() %>%
@@ -163,19 +155,13 @@ tmp_out[[i]] <- fromJSON(tmp_postCAM[i])
 tmp_out[[i]]$"21" <- NULL # causes error
 }
 
-
-dat_postCAM = dplyr::bind_rows(tmp_out)
-
-
+dat_postCAM <- dplyr::bind_rows(tmp_out)
+rm(tmp_postCAM); rm(tmp_out)
 
 
 
-
-
-########################################
-# create counter variable for both data sets
-########################################
-### pre study
+### create counter variable for both data sets
+# > pre study
 dat_preCAM$ID <- NA
 
 tmp_IDcounter <- 0
@@ -187,9 +173,7 @@ for(i in 1:nrow(dat_preCAM)){
   dat_preCAM$ID[i] <- tmp_IDcounter
 }
 
-
-
-### post study
+# > post CAM
 dat_postCAM$ID <- NA
 
 tmp_IDcounter <- 0
@@ -203,17 +187,15 @@ for(i in 1:nrow(dat_postCAM)){
 
 
 
-########################################
-# keep only complete data sets
-########################################
-### pre-study
+### keep only complete data sets
+# > pre study
 # sort(table(dat_preCAM$ID))
 sum(table(dat_preCAM$ID) != max(table(dat_preCAM$ID)))
 sum(table(dat_preCAM$ID) == max(table(dat_preCAM$ID)))
 
 dat_preCAM <- dat_preCAM[dat_preCAM$ID %in% names(table(dat_preCAM$ID))[table(dat_preCAM$ID) == max(table(dat_preCAM$ID))],]
 
-### post-study
+# > post CAM
 # sort(table(dat_postCAM$ID))
 sum(table(dat_postCAM$ID) != max(table(dat_postCAM$ID)))
 sum(table(dat_postCAM$ID) == max(table(dat_postCAM$ID)))
@@ -223,11 +205,9 @@ dat_postCAM <- dat_postCAM[dat_postCAM$ID %in% names(table(dat_postCAM$ID))[tabl
 
 
 
-########################################
-# json (from JATOS) to 2D data.frame
-########################################
-################################ pre-study
-### add paradata
+### json (from JATOS) to 2D data.frame
+# > pre study
+# add paradata
 tmp_notNumeric <- str_subset(string = colnames(dat_preCAM), pattern = "^meta|^R")
 tmp_notNumeric <- str_subset(string = tmp_notNumeric, pattern = "labjs|location", negate = TRUE)
 
@@ -243,12 +223,11 @@ questionnaire_preCAM <- questionnairetype(dataset = dat_preCAM,
                                         listvars = vec_ques, 
                                         notNumeric = vec_notNumeric, verbose = FALSE)
 
-
 dim(questionnaire_preCAM)
 
 
 
-################################ post-study
+# > post CAM
 tmp_numeric <- str_subset(string = colnames(dat_postCAM), pattern = "^nfc")
 
 
@@ -316,22 +295,115 @@ dim(questionnaire_postCAM)
 
 
 
-################################ merge two data sets
+### merge all data sets
+# remove one missing
+questionnaire_preCAM <- questionnaire_preCAM[questionnaire_preCAM$PROLIFIC_PID %in% questionnaire_postCAM$PROLIFIC_PID, ]
+
+
 questionnaire_postCAM$ID <- NULL
 questionnaire <- left_join(questionnaire_preCAM, questionnaire_postCAM, by="PROLIFIC_PID")
+
+
+## all missing answers to NA
+questionnaire[questionnaire == ""] <- NA
+## all feedback smaller than 3 characters to NA
+questionnaire$feedback_critic[nchar(questionnaire$feedback_critic) <= 2] <- NA
+
 dim(questionnaire)
+
+
+### save files
+## save as .xlsx file
+xlsx::write.xlsx2(x = questionnaire, file = "questionnaire.xlsx")
+## save as R object
+saveRDS(questionnaire, file = "questionnaire.rds")
 ```
 
+# get reaction times for single components
+
+Plot time taken (in minutes) by participants for single components of study:
+
+```{r, message = FALSE}
+#| label: get reaction times by component
+
+dat_duration <- data.frame(duration = NA, sender = NA, ID = NA, PROLIFIC_PID = NA)
+
+
+
+for(i in 1:length(unique(dat_preCAM$ID))){
+
+  tmp_PID <- dat_preCAM$PROLIFIC_PID[dat_preCAM$ID ==  unique(dat_preCAM$ID)[i] & !is.na(dat_preCAM$PROLIFIC_PID)]
+  
+  
+
+     # pre CAM
+    tmp_preCAM <- data.frame(duration = dat_preCAM$duration[dat_preCAM$ID == unique(dat_preCAM$ID)[i]] / 1000,
+                    sender = dat_preCAM$sender[dat_preCAM$ID == unique(dat_preCAM$ID)[i]])
+    tmp_preCAM <- tmp_preCAM[!is.na(tmp_preCAM$sender),]
+    
+     # post CAM
+    tmp_postCAM <- data.frame(duration = dat_postCAM$duration[dat_postCAM$ID == unique(dat_postCAM$ID)[i]] / 1000,
+                    sender = dat_postCAM$sender[dat_postCAM$ID == unique(dat_postCAM$ID)[i]])
+    tmp_postCAM <- tmp_postCAM[!is.na(tmp_postCAM$sender),]
+    
+  
+    tmp <- rbind(tmp_preCAM, tmp_postCAM)
+    
+
+  if(all(is.na(dat_duration))){
+    dat_duration <- data.frame(duration = tmp$duration,
+                              sender = tmp$sender,
+                              ID = rep(i, times=nrow(tmp)),
+                              PROLIFIC_PID = rep(tmp_PID, times=nrow(tmp)))
+
+
+  }else{
+    dat_duration <- rbind(dat_duration,  data.frame(duration = tmp$duration,
+                                                    sender = tmp$sender,
+                                                    ID = rep(i, times=nrow(tmp)),
+                                                    PROLIFIC_PID = rep(tmp_PID, times=nrow(tmp))))
+  }
+}
+
+## remove empty sender 
+dat_duration <- dat_duration[!is.na(dat_duration$sender), ]
+dat_duration <- dat_duration[!is.na(dat_duration$duration), ]
+
+dat_duration$sender[dat_duration$sender == "done"] <- "CAM instructions"
+
+## save as .xlsx
+# write.xlsx2(x = dat_duration, file = "outputs/para_duration_singleComponents.xlsx")
+
+#### plot
+dat_duration$ID <- factor(dat_duration$ID)
+p <- dat_duration %>%
+  ggplot(aes(x=sender, y=duration, color=PROLIFIC_PID)) +
+  geom_point() +
+  geom_jitter(width=0.15)+
+  theme(axis.text.x = element_text(angle = 90)) + theme(legend.position="none")
+p
+
+## save ggplot as PDF
+ggsave(filename = "outputs/01_dataPreperation/durations_components.pdf", p)
+
+
+# Calculate the mean duration in seconds for each sender and sort by mean duration
+tmp <- dat_duration %>%
+  group_by(sender) %>%
+  summarise(N = n(), mean_duration = mean(duration, na.rm = TRUE)) %>%
+  arrange(desc(mean_duration))
+DT::datatable(tmp, options = list(pageLength = 5)) 
+```
 
 
 ## set up CAM data
 
-### pre
-
 Load CAM data
 
 ```{r, message = FALSE}
-setwd("outputs")
+#| label: get raw CAM data pre
+
+setwd("outputs/01_dataPreperation")
 suppressMessages(read_file("CAMdata.txt") %>%
   # ... split it into lines ...
   str_split('\n') %>% first() %>%
@@ -349,18 +421,18 @@ for(i in 1:length(dat_CAM_pre)){
 Create CAM files, draw CAMs and compute network indicators
 
 ```{r, message = FALSE}
-########################################
-# create CAM single files (nodes, connectors, merged)
-########################################
+#| label: draw CAMs, network indicators, wordlist
+
+### create CAM single files (nodes, connectors, merged)
 CAMfiles <- create_CAMfiles(datCAM = raw_CAM, reDeleted = TRUE)
-## remove white spaces within pre-defined concepts
-CAMfiles[[1]]$text <- str_replace_all(string = CAMfiles[[1]]$text, "\\s+", " ")
-CAMfiles[[1]]$text <- str_trim(string = CAMfiles[[1]]$text, side = "both")
 
 
-########################################
-# draw CAMs
-########################################
+# remove testing data sets
+CAMfiles[[1]] <- CAMfiles[[1]][CAMfiles[[1]]$participantCAM %in% questionnaire$PROLIFIC_PID,]
+CAMfiles[[2]] <- CAMfiles[[2]][CAMfiles[[2]]$participantCAM %in% questionnaire$PROLIFIC_PID,]
+CAMfiles[[3]] <- CAMfiles[[3]][CAMfiles[[3]]$participantCAM.x %in% questionnaire$PROLIFIC_PID,]
+
+### draw CAMs
 CAMdrawn <- draw_CAM(dat_merged = CAMfiles[[3]],
                      dat_nodes = CAMfiles[[1]],ids_CAMs = "all",
                      plot_CAM = FALSE,
@@ -368,11 +440,8 @@ CAMdrawn <- draw_CAM(dat_merged = CAMfiles[[3]],
                      relvertexsize = 3,
                      reledgesize = 1)
 
-
-########################################
-# draw CAMs
-########################################
-tmp_microIndicator <- V(CAMdrawn[[1]])$label # all concepts are pre-defined
+### network indicators
+tmp_microIndicator <- V(CAMdrawn[[1]])$label
 networkIndicators <- compute_indicatorsCAM(drawn_CAM = CAMdrawn, 
                                            micro_degree = tmp_microIndicator, 
                                            micro_valence = tmp_microIndicator, 
@@ -381,27 +450,29 @@ networkIndicators <- compute_indicatorsCAM(drawn_CAM = CAMdrawn,
                                            largestClique = FALSE)
 
 
-########################################
-# wordlists
-########################################
+### wordlist
 CAMwordlist <- create_wordlist(
   dat_nodes =  CAMfiles[[1]],
   dat_merged =  CAMfiles[[3]],
-  order = "alphabetic",
+  useSummarized = TRUE,
+  order = "frequency",
   splitByValence = FALSE,
   comments = TRUE,
   raterSubsetWords = NULL,
   rater = FALSE
 )
 
-DT::datatable(CAMwordlist, options = list(pageLength = 5)) 
+DT::datatable(CAMwordlist, options = list(pageLength = 5))
 ```
+
 
 ### plot CAMs using igraph package
 
 Just plot first 10 CAMs for an impression
 
 ```{r}
+#| label: draw first 10 CAMs
+
 for(i in 1:10){ # length(CAMdrawn)
   plot(CAMdrawn[[i]], edge.arrow.size = .7,
        layout=layout_nicely, vertex.frame.color="black", asp = .5, margin = -0.1,
@@ -410,9 +481,94 @@ for(i in 1:10){ # length(CAMdrawn)
 ```
 
 
+
+### save CAMs as .json files, and as .png (igraph)
+
+
+```{r saveCAMs_pictures_pre, message = FALSE}
+#| label: save CAM pictures
+
+save_CAMs_as_pictures = FALSE
+
+if(save_CAMs_as_pictures){
+setwd("outputs/01_dataPreperation")
+
+setwd("savedCAMs")
+setwd("png")
+### remove all files if there are any
+if(length(list.files()) >= 1){
+  file.remove(list.files())
+  cat('\n!
+      all former .png files have been deleted')
+}
+
+### if no participant ID was provided replace by randomly generated CAM ID
+if(all(CAMfiles[[3]]$participantCAM.x == "noID")){
+  CAMfiles[[3]]$participantCAM.x <- CAMfiles[[3]]$CAM.x
+}
+
+### save as .json files, and as .png (igraph)
+ids_CAMs <- unique(CAMfiles[[3]]$participantCAM.x); length(ids_CAMs)
+
+
+for(i in 1:length(ids_CAMs)){
+  save_graphic(filename = paste0("CAM", ids_CAMs[i])) #  paste0(ids_CAMs[i]))
+  CAM_igraph <- CAMdrawn[[c(1:length(CAMdrawn))[
+    names(CAMdrawn) == paste0(unique(CAMfiles[[3]]$participantCAM.x)[i])]]]
+  plot(CAM_igraph, edge.arrow.size = .7,
+       layout=layout_nicely, vertex.frame.color="black", asp = .5, margin = -0.1,
+       vertex.size = 10, vertex.label.cex = .9)
+  dev.off()
+}
+
+setwd("../json")
+### remove all files if there are any
+if(length(list.files()) >= 1){
+  file.remove(list.files())
+  cat('\n!
+      all former .json files have been deleted')
+}
+for(i in 1:length(raw_CAM)){
+  if(!is_empty(raw_CAM[[i]]$nodes)){
+    if(nrow(raw_CAM[[i]]$nodes) > 5){
+      if(raw_CAM[[i]]$creator %in% questionnaire$PROLIFIC_PID){ # only if not deleted previously
+              write(toJSON(raw_CAM[[i]], encoding = "UTF-8"),
+            paste0(raw_CAM[[i]]$creator, ".json"))
+      }
+    }
+  }
+}
+}
+```
+
+
+
+
+### delete CAMs with strong star topology
+
+```{r}
+#| label: delete CAMs
+
+barplot(table(networkIndicators$degreetot_micro_AkzeptanzeinesneuenMaterialsystems) / nrow(networkIndicators))
+
+for(i in 1:nrow(networkIndicators)){
+  if(networkIndicators$degreetot_micro_AkzeptanzeinesneuenMaterialsystems[i] == 32){
+      plot(CAMdrawn[[i]], edge.arrow.size = .7,
+       layout=layout_nicely, vertex.frame.color="black", asp = .5, margin = -0.1,
+       vertex.size = 10, vertex.label.cex = .9)
+  }
+}
+```
+
+
+
+
+
+
 ### plot aggregated CAM
 
 ```{r}
+#| label: aggregate CAMs
 
 sel_ids <- unique(CAMfiles[[1]]$participantCAM)
 CAMaggregated <- aggregate_CAMs(dat_merged = CAMfiles[[3]], dat_nodes = CAMfiles[[1]],
@@ -445,66 +601,17 @@ for(i in 1:3){
      layout=layout_nicely, vertex.frame.color="black", asp = .5, margin = -0.1,
      vertex.size=diag(CAMaggregated[[1]]) / max(diag(CAMaggregated[[1]]))*5,
      vertex.label.cex = .9, 
-     edge.weight=2, edge.width=(E(g2)$weight/3))
+     edge.weight=2, edge.width=(E(g2)$weight/35))
 }
+
+
+
+CAMaggregated[[1]][1:5, 1:5]
 ```
 
 
-### save CAMs as .json files, and as .png (igraph)
 
 
-```{r saveCAMs_pictures_pre, message = FALSE}
-save_CAMs_as_pictures = TRUE
-
-if(save_CAMs_as_pictures){
-  setwd("outputs")
-
-setwd("savedCAMs")
-setwd("png")
-### remove all files if there are any
-if(length(list.files()) >= 1){
-  file.remove(list.files())
-  cat('\n!
-      all former .png files have been deleted')
-}
-
-### if no participant ID was provided replace by randomly generated CAM ID
-
-if(all(CAMfiles[[3]]$participantCAM.x == "noID")){
-  CAMfiles[[3]]$participantCAM.x <- CAMfiles[[3]]$CAM.x
-}
-
-### save as .json files, and as .png (igraph)
-ids_CAMs <- unique(CAMfiles[[3]]$participantCAM.x); length(ids_CAMs)
-
-
-for(i in 1:length(ids_CAMs)){
-  save_graphic(filename = paste0(ids_CAMs[i]))
-  CAM_igraph <- CAMdrawn[[c(1:length(CAMdrawn))[
-    names(CAMdrawn) == paste0(unique(CAMfiles[[3]]$participantCAM.x)[i])]]]
-  plot(CAM_igraph, edge.arrow.size = .7,
-       layout=layout_nicely, vertex.frame.color="black", asp = .5, margin = -0.1,
-       vertex.size = 10, vertex.label.cex = .9)
-  dev.off()
-}
-
-setwd("../json")
-### remove all files if there are any
-if(length(list.files()) >= 1){
-  file.remove(list.files())
-  cat('\n!
-      all former .json files have been deleted')
-}
-for(i in 1:length(raw_CAM)){
-  if(!is_empty(raw_CAM[[i]]$nodes)){
-    if(nrow(raw_CAM[[i]]$nodes) > 5){
-      write(toJSON(raw_CAM[[i]], encoding = "UTF-8"),
-            paste0(raw_CAM[[i]]$idCAM, ".json"))
-    }
-  }
-}
-}
-```
 
 
 # analyze data
@@ -516,7 +623,9 @@ for(i in 1:length(raw_CAM)){
 Question: 
 
 ```{r}
-DT::datatable(questionnaire[,c("PROLIFIC_PID", "feedback_critic")], options = list(pageLength = 5)) 
+#| label: feedback critic
+
+DT::datatable(questionnaire[!is.na(questionnaire$feedback_critic),c("PROLIFIC_PID", "feedback_critic")], options = list(pageLength = 5)) 
 ```
 
 ### Material system that has been thought of
@@ -524,6 +633,8 @@ DT::datatable(questionnaire[,c("PROLIFIC_PID", "feedback_critic")], options = li
 Question:  Bitte beschreiben Sie an an welches Materialsystem oder welche Materialsysteme Sie dabei gedacht haben. 
 
 ```{r}
+#| label: material thought of
+
 DT::datatable(questionnaire[,c("PROLIFIC_PID", "openQuestion_MaterialSystem")], options = list(pageLength = 5)) 
 ```
 
@@ -533,6 +644,8 @@ Question: Welche drei Begriffen nehmen Sie am positivsten bzw. negativsten für 
 
 
 ```{r}
+#| label: most pos, most neg
+
 ## most positive
 tmp <- str_trim(unlist(str_split(string = questionnaire$multiplePositive, pattern = "\\\\")))
 sort(table(tmp))
@@ -552,6 +665,8 @@ Question:  Fallen Ihnen weitere Eigenschaften ein, die Sie als relevant oder neg
 
 
 ```{r}
+#| label: basal attribute missing
+
 ## answers of participants
 DT::datatable(questionnaire[,c("PROLIFIC_PID", "openQuestion_missedPositive", "openQuestion_missedNegative")], options = list(pageLength = 5)) 
 ```
@@ -564,6 +679,8 @@ Question:  Welche drei Begriffe sind aus Ihrer Sicht in moralischer Hinsicht am 
 
 
 ```{r}
+#| label: ethical relevant
+
 ## ethical relevant
 tmp <- str_trim(unlist(str_split(string = questionnaire$multipleEthic, pattern = "\\\\")))
 sort(table(tmp))
@@ -578,6 +695,8 @@ Question: Bitte begründen Sie kurz die Auswahl der ethisch relevanten Begriffe:
 
 
 ```{r}
+#| label: argument ethical relevant
+
 ## answers of participants
 DT::datatable(questionnaire[,c("PROLIFIC_PID", "openQuestion_Ethic")], options = list(pageLength = 5)) 
 ```
@@ -588,12 +707,16 @@ DT::datatable(questionnaire[,c("PROLIFIC_PID", "openQuestion_Ethic")], options =
 Question: Sollte die Entwicklung innovativer Materialsysteme mit öffentlichen Mitteln gefördert werden? 	
 
 ```{r}
+#| label: outcome research
+
 table(questionnaire$outcome_research)
 ```
 
 Question: Sollten die Erforschung und Entwicklung solcher innovativer Materialsysteme verboten werden?
 
 ```{r}
+#| label: outcome prohibition
+
 table(questionnaire$outcome_prohibition)
 ```
 
@@ -601,6 +724,8 @@ Question: Wären Sie bereit, Produkte zu kaufen, die innovative Materialsysteme 
 
 
 ```{r}
+#| label: outcome buy
+
 table(questionnaire$outcome_buy)
 ```
 
@@ -609,6 +734,8 @@ table(questionnaire$outcome_buy)
 Question: An welche möglichen Produkte haben Sie gedacht? 
 
 ```{r}
+#| label: outcome buy - text
+#| 
 ## answers of participants
 DT::datatable(questionnaire[,c("PROLIFIC_PID", "outcome_buy_text")], options = list(pageLength = 5)) 
 ```

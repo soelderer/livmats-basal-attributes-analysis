@@ -31,8 +31,8 @@ CFAstats <- function(dataset, regularExp, labelLatent = "latentVar",
                     upper = FALSE, xlas = 2, main = labelLatent)
 
     ## get descriptive statistics
-    tmp <- getDescriptives(dataset = dataset, regEx = regularExp, sorted = TRUE)
-    cat("descriptive statistics:", "\n")
+    tmp <- getDescriptivesSurvey(dataset = dataset, regEx = regularExp, sorted = TRUE)
+    cat("\n\ndescriptive statistics:", "\n")
     print(tmp)
 
     out_list$desTable <- tmp
@@ -60,12 +60,12 @@ CFAstats <- function(dataset, regularExp, labelLatent = "latentVar",
 
   ### EFA in psych
   if(computeEFA){
-    tmp_dim <- uniDimensionalityTest(label = labelLatent,
+    tmp_dim <- dimensionalityTest(label = labelLatent,
                                      regEx = regularExp, dataset = dataset)
     tmp_EFA <- explorativeFactorAnalysis(label = labelLatent,
                                          regEx = regularExp,
                                          dataset = dataset, nfac = 1)
-    cat("EFA factor loadings (1 factor solution):", "\n")
+    cat("\n\nEFA factor loadings (1 factor solution):", "\n")
     print(tmp_EFA[[1]]$loadings)
 
     out_list$dimTest <- tmp_dim
@@ -86,7 +86,7 @@ CFAstats <- function(dataset, regularExp, labelLatent = "latentVar",
     print(summary(fit, standardized = TRUE, fit.measures = TRUE))
     # semplot
     semPlot::semPaths(object = fit, what = "std", edge.label.cex = 0.5)
-    cat("CFA first 6 Modification Indices:", "\n")
+    cat("\n\nCFA first 6 Modification Indices:", "\n")
     print(head(modificationindices(fit, sort=T)))
 
     out_list$CFA <- fit
