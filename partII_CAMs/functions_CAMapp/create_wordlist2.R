@@ -137,6 +137,7 @@ create_wordlist <- function(dat_nodes = CAMfiles[[1]],
     # print(j)
     tmp_deg <- igraph::degree(graph = drawn_CAM[[j]], mode = "total")
     names(tmp_deg) <- V(drawn_CAM[[j]])$label
+    
 
     if(j == 1){
       tmp_dat_out <-   cbind(names(tmp_deg), as.numeric(tmp_deg))
@@ -159,6 +160,21 @@ create_wordlist <- function(dat_nodes = CAMfiles[[1]],
   dat_nodes$value[dat_nodes$value == 10] <- 0
 
 
+  for(j in 1:length(drawn_CAM)){
+    tmp_transitivity <- igraph::transitivity(graph = as.undirected(drawn_CAM[[j]]),
+                                               type = "local")
+    names(tmp_transitivity) <- V(drawn_CAM[[j]])$label
+
+    if(j == 1){
+      tmp_transitivity_out <-   cbind(names(tmp_transitivity), as.numeric(tmp_transitivity))
+    } else{
+      tmp_transitivity_out <- rbind(tmp_transitivity_out, cbind(names(tmp_transitivity), as.numeric(tmp_transitivity)))
+    }
+  }
+  
+  tmp_transitivity_out <- as.data.frame(tmp_transitivity_out)
+  colnames(tmp_transitivity_out) <- c("label", "transitivity")
+  tmp_transitivity_out$transitivity <- as.numeric(tmp_transitivity_out$transitivity)
 
   ## if comments TRUE
   # ! limited to 100 comments
@@ -171,6 +187,8 @@ create_wordlist <- function(dat_nodes = CAMfiles[[1]],
   ## split valence only for useSummarized
   if(!splitByValence) {
     tmp_dat_out$label <- stringr::str_remove_all(string = tmp_dat_out$label,
+                                              pattern = "_positive$|_negative$|_neutral$|_ambivalent$")
+    tmp_transitivity_out$label <- stringr::str_remove_all(string = tmp_transitivity_out$label,
                                               pattern = "_positive$|_negative$|_neutral$|_ambivalent$")
   }
 
@@ -187,7 +205,11 @@ create_wordlist <- function(dat_nodes = CAMfiles[[1]],
     freq_terms$sd_degree[freq_terms$Words == freq_terms$Words[i]] <-
       sd(tmp_dat_out$degree[tmp_dat_out$label == freq_terms$Words[i]])
 
-
+    ## transitivity mean / sd
+    freq_terms$mean_transitivity[freq_terms$Words == freq_terms$Words[i]] <-
+      mean(tmp_transitivity_out$transitivity[tmp_transitivity_out$label == freq_terms$Words[i]], na.rm = TRUE)
+    freq_terms$sd_transitivity[freq_terms$Words == freq_terms$Words[i]] <-
+      sd(tmp_transitivity_out$transitivity[tmp_transitivity_out$label == freq_terms$Words[i]], na.rm = TRUE)
 
     ## if comments TRUE
     if(comments){
@@ -246,6 +268,8 @@ create_wordlist <- function(dat_nodes = CAMfiles[[1]],
   freq_terms$sd_valence <- as.numeric(freq_terms$sd_valence)
   freq_terms$mean_degree <- as.numeric(freq_terms$mean_degree)
   freq_terms$sd_degree <- as.numeric(freq_terms$sd_degree)
+  freq_terms$mean_transitivity <- as.numeric(freq_terms$mean_transitivity)
+  freq_terms$sd_transitivity <- as.numeric(freq_terms$sd_transitivity)
 
 
   ## add columns for raters
