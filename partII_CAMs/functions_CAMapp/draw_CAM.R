@@ -214,27 +214,19 @@ draw_CAM <- function(dat_merged = CAMfiles[[3]],
             print("== ids_CAMs in drawnCAM")
        names(list_g) <- paste0(ids_CAMs)
           }}, # tryCatch(): catch warnings
-  warning = function(cond) {
-    showModal(
-      modalDialog(
-        title = "Error while drawing CAMs",
-        "It appears that the data of at least one of the CAMs is invalid. This could happen e.g. if the data file is corrupt. Please make sure you have uploaded the right data set.",
-        easyClose = TRUE,
-        footer = tagList(modalButton("Ok"))
-      )
-    )
-  },
+  
+  # don't catch warnings here, or draw_CAMs will return NULL
 
   # tryCatch(): catch errors
   error = function(cond) {
-    showModal(
-      modalDialog(
-        title = "Error while drawing CAMs",
-        "It appears that the data of at least one of the CAMs is invalid. This could happen e.g. if the data file is corrupt. Please make sure you have uploaded the right data set.",
-        easyClose = TRUE,
-        footer = tagList(modalButton("Ok"))
-      )
-    )
+    #showModal(
+    #  modalDialog(
+    #    title = "Error while drawing CAMs",
+    #    "It appears that the data of at least one of the CAMs is invalid. This could happen e.g. if the data file is corrupt. Please make sure you have uploaded the right data set.",
+    #    easyClose = TRUE,
+    #    footer = tagList(modalButton("Ok"))
+    #  )
+    #)
 }
   ) # tryCatch()
 
