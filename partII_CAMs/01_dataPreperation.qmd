@@ -714,7 +714,16 @@ if (length(vec_delete) > 1) {
 ```
 
 
+## aggregate CAMs
 
+this is needed for MultilayerExtraction.
+
+```{r}
+sel_ids <- unique(CAMfiles_clean[[1]]$participantCAM)
+CAMaggregated_clean <- aggregate_CAMs(dat_merged = CAMfiles_clean[[3]], dat_nodes = CAMfiles_clean[[1]],
+                                      ids_CAMs = sel_ids)
+
+```
 
 
 ## save all final files
@@ -751,6 +760,10 @@ if (length(vec_delete) > 1) {
     # save wordlist
     ## save as .xlsx file
     xlsx::write.xlsx2(x = CAMwordlist_clean, file = "CAMwordlist.xlsx")
+    
+    # save aggregated CAMs
+    ## save as R object
+    saveRDS(CAMaggregated_clean, file = "CAMaggregated.rds")
     
     cat("clean data sets have been sucessfully saved")
   }
