@@ -64,7 +64,8 @@ if(!all(ids_CAMs %in% dat_nodes$CAM)){
   rownames(adjmat) <- unique(sel_dat_nodes$text)
   colnames(adjmat) <- unique(sel_dat_nodes$text)
 
-
+  multigraph_edgelist <- data.frame(matrix(ncol = 3, nrow = 0))
+  
   for(i in 1:length(sel_drawn_CAM)){
 
     ## add 1 to the diagonal
@@ -84,6 +85,13 @@ if(!all(ids_CAMs %in% dat_nodes$CAM)){
       adjmat[rownames(adjmat) == tmp_edges[k,1], colnames(adjmat) == tmp_edges[k,2]] <-
         adjmat[rownames(adjmat) == tmp_edges[k,1], colnames(adjmat) == tmp_edges[k,2]] + 1
     }
+    
+    # we'll use participant CAM ID as identifier for the layer for now
+    tmp_layer <- rep(names(sel_drawn_CAM[i]), nrow(tmp_edges))
+    tmp_multigraph_edgelist <- cbind(tmp_edges, tmp_layer)
+    
+    # append it to the collector data frame
+    multigraph_edgelist <- rbind(multigraph_edgelist, tmp_multigraph_edgelist)
   }
 
 
@@ -122,8 +130,10 @@ if(!all(ids_CAMs %in% dat_nodes$CAM)){
   V(g_agg)$label.font <- 1 # 2 = bold
 
 
+  # names for the multigraph edgelist
+  names(multigraph_edgelist) <- c("node1", "node2", "layer")
 
-  out_list <- list(adjmat, g_agg, sel_dat_nodes)
+  out_list <- list(adjmat, g_agg, sel_dat_nodes, multigraph_edgelist)
 
   return(out_list)
 }
