@@ -29,7 +29,9 @@ require(pacman)
 p_load('tidyverse', 'jsonlite', 'magrittr', 'xlsx',
        'stargazer', 'psych', 'jtools', 'DT', 'ggstatsplot', 
        'lavaan', 
-       'regsem', 'MplusAutomation', 'igraph')
+       'regsem', 'MplusAutomation', 'igraph', 'shiny', 'ggplot2', 'tidyLPA', 'MultilayerExtraction',
+       'Matrix', 'igraph', 'foreach', 'doParallel', 'parallel')
+ 
 
 ### list data files
 setwd("data")
@@ -465,6 +467,34 @@ CAMwordlist <- create_wordlist(
 DT::datatable(CAMwordlist, options = list(pageLength = 5))
 ```
 
+### Valence distributions
+
+```{r}
+#| label: valence distributions
+
+valenceData <- CAMfiles[[1]]
+valenceData$value[valenceData$value == 10] <- 0
+
+valenceDataShort <- valenceData %>% pivot_wider(names_from = text, values_from = value, id_cols = CAM)
+
+hist1_names <- c("Akzeptanz eines neuen Materialsystems", "Energie   generierend", 
+"Energie   speichernd", "Insekten ähnlich", "aktive Formänderung durch Umwelteinwirkung", 
+"aktive Verhaltensänderung durch Umwelteinwirkung", "autonom", 
+"bioinspiriert", "elektronikfrei", "energieautonom", "energieeffizient", 
+"enthält Kunststoff", "haltbar", "intelligent", "langlebig", 
+"lebensähnlich")
+hist2_names <- c("leicht zerstörbar", "multifunktional", "nachhaltig", 
+"passive Formänderung durch Umwelteinwirkung", "passive Verhaltensänderung durch Umwelteinwirkung", 
+"reaktionsfähig", "robust", "selbstheilend", "selbstreparierend", 
+"technologisch", "umweltfreundlich", "umweltschädlich", "wartungsfrei", 
+"wartungsintensiv", "widerstandsfähig", "zuverlässig", "ökologisch")
+
+valenceData %>% filter(text %in% hist1_names) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~text, ncol = 4, nrow = 4)
+valenceData %>% filter(text %in% hist2_names) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~text, ncol = 4, nrow = 5)
+```
+
 
 ### plot CAMs using igraph package
 
@@ -555,7 +585,7 @@ for(i in 1:nrow(networkIndicators)){
   if(networkIndicators$degreetot_micro_AkzeptanzeinesneuenMaterialsystems[i] == 32){
       plot(CAMdrawn[[i]], edge.arrow.size = .7,
        layout=layout_nicely, vertex.frame.color="black", asp = .5, margin = -0.1,
-       vertex.size = 10, vertex.label.cex = .9)
+       vertex.size = 10, vertex.label.cex = .9, main=networkIndicators$CAM_ID[i])
   }
 }
 ```
@@ -785,3 +815,53 @@ mean(vec_boolean)
 ```
 
 
+# Analysis
+
+## Latent profile analysis
+just a preliminary analysis to get a feeling for what we've got.
+
+```{r}
+#lpa <- valenceDataShort %>% select(-CAM) %>%
+#  estimate_profiles(1:9, variances = c("equal", "equal", "varying"),
+#                         covariances = c("zero", "equal", "zero"))
+```
+
+## Multilayer community detection
+
+```{r}
+# recode vertex labels to integers
+attributes_names <- c(hist1_names, hist2_names)
+CAMaggregated[[4]][["node1"]] <- match(CAMaggregated[[4]][["node1"]], attributes_names)
+CAMaggregated[[4]][["node2"]] <- match(CAMaggregated[[4]][["node2"]], attributes_names)
+
+# recode layers (CAM IDs) to integers
+layer_names <- unique(CAMfiles[[1]]$participantCAM)
+CAMaggregated[[4]][["layer"]] <- match(CAMaggregated[[4]][["layer"]], layer_names)
+
+# now we're ready for community extraction using the MultiLayer extraction package
+set.seed(123)
+start_time <- Sys.time()
+#community.object <- multilayer.extraction(adjacency = CAMaggregated[[4]], seed = 123, min.score = 0, prop.sample = .10)
+end_time <- Sys.time()
+end_time - start_time
+
+plot(community.object, main = "Diagnostic Plot")
+
+
+#saveRDS(community.object, file = "communityobject.Rda")
+
+print_communities <- function(community.object, k, m = 192, n = 33) {
+  for(i in 1:k) {
+    object <- refine(community.object, k = k, m = m, n = n)
+    
+    num.layers <- colSums(object$Layers > 0)
+    num.vertices <- colSums(object$Vertices)
+    
+    print(cat(paste0("Community ", i, " contains ", num.vertices[i], " vertices across ", num.layers[i], " layers.")))
+    print(cat(paste0("        ", paste(attributes_names[which(object$Vertices[,i] == 1)], sep = ", "))))
+  }
+}
+
+print_communities(community.object, k = 20)
+
+```
