@@ -81,14 +81,11 @@ data_summary <- function(data, varname, groupnames){
 
 
 
-
-# analyze data
-
-## Micro level
+# Micro level
 
 Distributions, cluster analyses... on single node level...
 
-### Valence distributions
+## Valence distributions
 
 ```{r}
 #| label: valence distributions
@@ -130,7 +127,108 @@ valenceData %>% filter(text %in% hist2_names) %>%
 
 
 
-### plot aggregated CAM
+# Meso level
+
+## Multilayer community detection
+
+```{r}
+setwd("outputs")
+# recode vertex labels to integers
+attributes_names <- c(hist1_names, hist2_names)
+CAMaggregated[[4]][["node1"]] <- match(CAMaggregated[[4]][["node1"]], attributes_names)
+CAMaggregated[[4]][["node2"]] <- match(CAMaggregated[[4]][["node2"]], attributes_names)
+
+# recode layers (CAM IDs) to integers
+layer_names <- unique(CAMfiles[[1]]$participantCAM)
+CAMaggregated[[4]][["layer"]] <- match(CAMaggregated[[4]][["layer"]], layer_names)
+
+# now we're ready for community extraction using the MultiLayer extraction package
+set.seed(123)
+start_time <- Sys.time()
+#community.object <- multilayer.extraction(adjacency = CAMaggregated[[4]], seed = 123, min.score = 0, prop.sample = .10)
+end_time <- Sys.time()
+end_time - start_time
+
+#saveRDS(community.object, file = "communityobject.Rda")
+community.object <- readRDS(file = "communityobject.Rda")
+
+plot(community.object, main = "Diagnostic Plot")
+
+
+
+
+
+print_communities <- function(community.object, k, m = 192, n = 33) {
+  for(i in 1:k) {
+    object <- refine(community.object, k = k, m = m, n = n)
+    
+    num.layers <- colSums(object$Layers > 0)
+    num.vertices <- colSums(object$Vertices)
+    
+    print(cat(paste0("Community ", i, " contains ", num.vertices[i], " vertices across ", num.layers[i], " layers.")))
+    print(cat(paste0("        ", paste(attributes_names[which(object$Vertices[,i] == 1)], sep = ", "))))
+  }
+}
+
+print_communities(community.object, k = 2)
+
+```
+
+
+	
+## random graph - delete me
+
+Compare the probability that two concepts are connected in randomly generated networks to drawn CAMs:
+
+```{r}
+## get average number of drawn concepts (here fixed)
+numConcepts <- mean(networkIndicators$num_nodes_macro)
+## get average density
+numDensity <- mean(networkIndicators$density_macro)
+
+## simply get the average probability that two concepts are connected:
+g <- igraph::random.graph.game(n = numConcepts, p.or.m = numDensity)
+plot(g)
+are.connected(g, 1, 2)
+
+
+#> whereby each edge to be drawn has the identical probability in the Erdős–Rényi model
+vec_booleanConnected <- c()
+# vec_booleanConnected2 <- c()
+
+for(i in 1:10000){
+  g <- igraph::random.graph.game(n = numConcepts, p.or.m = numDensity)
+  vec_booleanConnected[i] <- are.connected(g, 1, 2)
+    # vec_booleanConnected2[i] <- are.connected(g, 22, 26)
+}
+baselineProbability <- mean(vec_booleanConnected)
+baselineProbability
+# mean(vec_booleanConnected2)
+```
+
+
+This baseline probability can be compared to all possible combinations of drawn concepts: 
+
+```{r}
+vec_boolean <- c()
+for(i in 1:length(CAMdrawn)){
+  vec_boolean[i] <- are.connected(graph = CAMdrawn[[i]], 
+              v1 = V(CAMdrawn[[i]])[V(CAMdrawn[[i]])$label == "robust"], 
+              v2 = V(CAMdrawn[[i]])[V(CAMdrawn[[i]])$label == "widerstandsfähig"])
+}
+
+mean(vec_boolean)
+```
+
+
+
+
+
+
+
+# Macro level
+
+## plot aggregated CAM
 
 ```{r}
 #| label: aggregate CAMs
@@ -176,57 +274,9 @@ CAMaggregated[[1]][1:5, 1:5]
 
 
 
-	
-## co-variation of basal attributes
-
-Compare the probability that two concepts are connected in randomly generated networks to drawn CAMs:
-
-```{r}
-## get average number of drawn concepts (here fixed)
-numConcepts <- mean(networkIndicators$num_nodes_macro)
-## get average density
-numDensity <- mean(networkIndicators$density_macro)
-
-## simply get the average probability that two concepts are connected:
-g <- igraph::random.graph.game(n = numConcepts, p.or.m = numDensity)
-plot(g)
-are.connected(g, 1, 2)
 
 
-#> whereby each edge to be drawn has the identical probability in the Erdős–Rényi model
-vec_booleanConnected <- c()
-# vec_booleanConnected2 <- c()
-
-for(i in 1:10000){
-  g <- igraph::random.graph.game(n = numConcepts, p.or.m = numDensity)
-  vec_booleanConnected[i] <- are.connected(g, 1, 2)
-    # vec_booleanConnected2[i] <- are.connected(g, 22, 26)
-}
-baselineProbability <- mean(vec_booleanConnected)
-baselineProbability
-# mean(vec_booleanConnected2)
-```
-
-
-
-
- 
-
-This baseline probability can be compared to all possible combinations of drawn concepts: 
-
-```{r}
-vec_boolean <- c()
-for(i in 1:length(CAMdrawn)){
-  vec_boolean[i] <- are.connected(graph = CAMdrawn[[i]], 
-              v1 = V(CAMdrawn[[i]])[V(CAMdrawn[[i]])$label == "robust"], 
-              v2 = V(CAMdrawn[[i]])[V(CAMdrawn[[i]])$label == "widerstandsfähig"])
-}
-
-mean(vec_boolean)
-```
-
-
-# Analysis
+# Clusteranalyses
 
 ## Latent profile analysis
 just a preliminary analysis to get a feeling for what we've got.
@@ -235,50 +285,5 @@ just a preliminary analysis to get a feeling for what we've got.
 # lpa <- valenceDataShort %>% select(-CAM) %>%
 #  estimate_profiles(1:9, variances = c("equal", "equal", "varying"),
 #                         covariances = c("zero", "equal", "zero"))
-```
-
-## Multilayer community detection
-
-```{r}
-setwd("outputs")
-# recode vertex labels to integers
-attributes_names <- c(hist1_names, hist2_names)
-CAMaggregated[[4]][["node1"]] <- match(CAMaggregated[[4]][["node1"]], attributes_names)
-CAMaggregated[[4]][["node2"]] <- match(CAMaggregated[[4]][["node2"]], attributes_names)
-
-# recode layers (CAM IDs) to integers
-layer_names <- unique(CAMfiles[[1]]$participantCAM)
-CAMaggregated[[4]][["layer"]] <- match(CAMaggregated[[4]][["layer"]], layer_names)
-
-# now we're ready for community extraction using the MultiLayer extraction package
-set.seed(123)
-start_time <- Sys.time()
-#community.object <- multilayer.extraction(adjacency = CAMaggregated[[4]], seed = 123, min.score = 0, prop.sample = .10)
-end_time <- Sys.time()
-end_time - start_time
-
-#saveRDS(community.object, file = "communityobject.Rda")
-community.object <- readRDS(file = "communityobject.Rda")
-
-plot(community.object, main = "Diagnostic Plot")
-
-
-
-
-
-print_communities <- function(community.object, k, m = 192, n = 33) {
-  for(i in 1:k) {
-    object <- refine(community.object, k = k, m = m, n = n)
-    
-    num.layers <- colSums(object$Layers > 0)
-    num.vertices <- colSums(object$Vertices)
-    
-    print(cat(paste0("Community ", i, " contains ", num.vertices[i], " vertices across ", num.layers[i], " layers.")))
-    print(cat(paste0("        ", paste(attributes_names[which(object$Vertices[,i] == 1)], sep = ", "))))
-  }
-}
-
-print_communities(community.object, k = 2)
-
 ```
 
