@@ -42,6 +42,8 @@ CAMfiles <- readRDS(file = "CAMfiles.rds")
 
 CAMdrawn <- readRDS(file = "CAMdrawn.rds")
 
+CAMaggregated <- readRDS(file = "CAMaggregated.rds")
+
 networkIndicators <- readRDS(file = "networkIndicators.rds")
 
 
@@ -123,6 +125,42 @@ valenceData %>% filter(text %in% hist1_names) %>%
   ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~text, ncol = 4, nrow = 4) + ggplot_theme
 valenceData %>% filter(text %in% hist2_names) %>%
   ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~text, ncol = 4, nrow = 5)
+
+
+# histograms sorted by MEAN VALENCE
+hist1_names_mean <- CAMwordlist[order(CAMwordlist$mean_valence, decreasing = TRUE), "Words"][1:16]
+hist2_names_mean <- CAMwordlist[order(CAMwordlist$mean_valence, decreasing = TRUE), "Words"][17:33]
+
+valenceData %>% filter(text %in% hist1_names_mean) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~ factor(text, levels = hist1_names_mean), ncol = 4, nrow = 4) +
+  ggtitle("Sorted by avg. valence")
+valenceData %>% filter(text %in% hist2_names_mean) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~ factor(text, levels = hist2_names_mean), ncol = 4, nrow = 5) +
+  ggtitle("Sorted by avg. valence")
+
+
+# histograms sorted by MEAN DEGREE
+hist1_names_degree <- CAMwordlist[order(CAMwordlist$mean_degree, decreasing = TRUE), "Words"][1:16]
+hist2_names_degree <- CAMwordlist[order(CAMwordlist$mean_degree, decreasing = TRUE), "Words"][17:33]
+
+valenceData %>% filter(text %in% hist1_names_degree) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~ factor(text, levels = hist1_names_degree), ncol = 4, nrow = 4) +
+  ggtitle("Sorted by avg. degree")
+valenceData %>% filter(text %in% hist2_names_degree) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~ factor(text, levels = hist2_names_degree), ncol = 4, nrow = 5) +
+  ggtitle("Sorted by avg. degree")
+
+
+# histograms sorted by MEAN TRANSITIVITY
+hist1_names_transitivity <- CAMwordlist[order(CAMwordlist$mean_transitivity, decreasing = TRUE), "Words"][1:16]
+hist2_names_transitivity <- CAMwordlist[order(CAMwordlist$mean_transitivity, decreasing = TRUE), "Words"][17:33]
+
+valenceData %>% filter(text %in% hist1_names_transitivity) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~ factor(text, levels = hist1_names_transitivity), ncol = 4, nrow = 4) +
+  ggtitle("Sorted by avg. transitivity")
+valenceData %>% filter(text %in% hist2_names_transitivity) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~ factor(text, levels = hist2_names_transitivity), ncol = 4, nrow = 5) +
+  ggtitle("Sorted by avg. transitivity")
 ```
 
 
@@ -232,10 +270,6 @@ mean(vec_boolean)
 
 ```{r}
 #| label: aggregate CAMs
-
-sel_ids <- unique(CAMfiles[[1]]$participantCAM)
-CAMaggregated <- aggregate_CAMs(dat_merged = CAMfiles[[3]], dat_nodes = CAMfiles[[1]],
-                                ids_CAMs = sel_ids)
 
 # plot(CAMaggregated[[2]], vertex.size=diag(CAMaggregated[[1]]) / max(diag(CAMaggregated[[1]]))*20, edge.arrow.size=0.01)
 # plot(CAMaggregated[[2]], vertex.size=(abs(V(CAMaggregated[[2]])$value)+1)*5, edge.arrow.size=0.01)
