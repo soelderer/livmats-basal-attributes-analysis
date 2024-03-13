@@ -1,0 +1,190 @@
+---
+title: "Analyze CAM data on micro, meso, macro level for part II of basal attributes article"
+author: "Paul Sölder, Julius Fenn"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    html-math-method: katex
+    number-sections: true
+---
+
+
+# Notes
+
+
+# load data files
+
+
+
+```{r}
+#| label: load files
+#| warning: false
+
+# sets the directory of location of this script as the current directory
+# setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+
+### load packages
+require(pacman)
+p_load('tidyverse', 'jsonlite', 'magrittr', 'xlsx',
+       'stargazer', 'psych', 'jtools', 'DT', 'ggstatsplot', 
+       'lavaan', 
+       'regsem', 'MplusAutomation', 'igraph', 'shiny', 'ggplot2', 'tidyLPA', 'MultilayerExtraction',
+       'Matrix', 'igraph', 'foreach', 'doParallel', 'parallel')
+ 
+
+### list data files
+setwd("data")
+
+
+
+
+```
+
+
+
+
+# analyze data
+
+## describe data set
+
+### Valence distributions
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### feedback to the study
+
+Question: 
+
+```{r}
+#| label: feedback critic
+
+DT::datatable(questionnaire[!is.na(questionnaire$feedback_critic),c("PROLIFIC_PID", "feedback_critic")], options = list(pageLength = 5)) 
+```
+
+### Material system that has been thought of
+
+Question:  Bitte beschreiben Sie an an welches Materialsystem oder welche Materialsysteme Sie dabei gedacht haben. 
+
+```{r}
+#| label: material thought of
+
+DT::datatable(questionnaire[,c("PROLIFIC_PID", "openQuestion_MaterialSystem")], options = list(pageLength = 5)) 
+```
+
+### basal attributes: most pos. / neg.
+
+Question: Welche drei Begriffen nehmen Sie am positivsten bzw. negativsten für die Beschreibung neuer Materialsysteme wahr?
+
+
+```{r}
+#| label: most pos, most neg
+
+## most positive
+tmp <- str_trim(unlist(str_split(string = questionnaire$multiplePositive, pattern = "\\\\")))
+sort(table(tmp))
+
+## most negative
+tmp <- str_trim(unlist(str_split(string = questionnaire$multipleNegative, pattern = "\\\\")))
+sort(table(tmp))
+
+## answers of participants
+DT::datatable(questionnaire[,c("PROLIFIC_PID", "multiplePositive", "multipleNegative")], options = list(pageLength = 5)) 
+```
+
+
+**any basal attributes missing?**
+
+Question:  Fallen Ihnen weitere Eigenschaften ein, die Sie als relevant oder negativ für die Beschreibung neuer Materialsysteme erachten, die in der Liste nicht aufgeführt sind, so können Sie diese gerne in folgenden Textfeldern ergänzen: 
+
+
+```{r}
+#| label: basal attribute missing
+
+## answers of participants
+DT::datatable(questionnaire[,c("PROLIFIC_PID", "openQuestion_missedPositive", "openQuestion_missedNegative")], options = list(pageLength = 5)) 
+```
+
+
+
+### basal attributes: ethical most relevant
+
+Question:  Welche drei Begriffe sind aus Ihrer Sicht in moralischer Hinsicht am "relevantesten"?
+
+
+```{r}
+#| label: ethical relevant
+
+## ethical relevant
+tmp <- str_trim(unlist(str_split(string = questionnaire$multipleEthic, pattern = "\\\\")))
+sort(table(tmp))
+
+## answers of participants
+DT::datatable(questionnaire[,c("PROLIFIC_PID", "multipleEthic")], options = list(pageLength = 5)) 
+```
+
+**argument for choosen basal attributes**
+
+Question: Bitte begründen Sie kurz die Auswahl der ethisch relevanten Begriffe:
+
+
+```{r}
+#| label: argument ethical relevant
+
+## answers of participants
+DT::datatable(questionnaire[,c("PROLIFIC_PID", "openQuestion_Ethic")], options = list(pageLength = 5)) 
+```
+
+
+### outcome questions
+
+Question: Sollte die Entwicklung innovativer Materialsysteme mit öffentlichen Mitteln gefördert werden? 	
+
+```{r}
+#| label: outcome research
+
+table(questionnaire$outcome_research)
+```
+
+Question: Sollten die Erforschung und Entwicklung solcher innovativer Materialsysteme verboten werden?
+
+```{r}
+#| label: outcome prohibition
+
+table(questionnaire$outcome_prohibition)
+```
+
+Question: Wären Sie bereit, Produkte zu kaufen, die innovative Materialsysteme enthalten? 
+
+
+```{r}
+#| label: outcome buy
+
+table(questionnaire$outcome_buy)
+```
+
+> if yes to previous question
+
+Question: An welche möglichen Produkte haben Sie gedacht? 
+
+```{r}
+#| label: outcome buy - text
+#| 
+## answers of participants
+DT::datatable(questionnaire[,c("PROLIFIC_PID", "outcome_buy_text")], options = list(pageLength = 5)) 
+```

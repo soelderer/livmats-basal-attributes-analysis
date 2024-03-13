@@ -1,0 +1,284 @@
+---
+title: "Analyze CAM data on micro, meso, macro level for part II of basal attributes article"
+author: "Paul Sölder, Julius Fenn"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    html-math-method: katex
+    number-sections: true
+---
+
+
+# Notes
+
+
+# load data files
+
+
+
+```{r}
+#| label: load files
+#| warning: false
+
+# sets the directory of location of this script as the current directory
+# setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+
+### load packages
+require(pacman)
+p_load('tidyverse', 'jsonlite', 'magrittr', 'xlsx',
+       'stargazer', 'psych', 'jtools', 'DT', 'ggstatsplot', 
+       'lavaan', 
+       'regsem', 'MplusAutomation', 'igraph', 'shiny', 'ggplot2', 'tidyLPA', 'MultilayerExtraction',
+       'Matrix', 'igraph', 'foreach', 'doParallel', 'parallel')
+ 
+
+
+setwd("outputs/01_dataPreperation/final")
+### load questionnaire
+questionnaire <- readRDS(file = "questionnaire.rds")
+
+CAMfiles <- readRDS(file = "CAMfiles.rds")
+
+CAMdrawn <- readRDS(file = "CAMdrawn.rds")
+
+networkIndicators <- readRDS(file = "networkIndicators.rds")
+
+
+
+### load functions
+# print(getwd())
+setwd("../../../functions")
+for(i in 1:length(dir())){
+  # print(dir()[i])
+  source(dir()[i], encoding = "utf-8")
+}
+
+
+setwd("../functions_CAMapp")
+for(i in 1:length(dir())){
+  # print(dir()[i])
+  source(dir()[i], encoding = "utf-8")
+}
+rm(i)
+
+
+
+### summary function
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      se = sd(x[[col]], na.rm=TRUE) / sqrt(length(x[[col]])))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- plyr::rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+
+```
+
+
+
+
+# analyze data
+
+## Micro level
+
+Distributions, cluster analyses... on single node level...
+
+### Valence distributions
+
+```{r}
+#| label: valence distributions
+
+valenceData <- CAMfiles[[1]]
+valenceData$value[valenceData$value == 10] <- 0
+
+valenceDataShort <- valenceData %>% pivot_wider(names_from = text, values_from = value, id_cols = CAM)
+
+hist1_names <- c("Akzeptanz eines neuen Materialsystems", "Energie   generierend", 
+"Energie   speichernd", "Insekten ähnlich", "aktive Formänderung durch Umwelteinwirkung", 
+"aktive Verhaltensänderung durch Umwelteinwirkung", "autonom", 
+"bioinspiriert", "elektronikfrei", "energieautonom", "energieeffizient", 
+"enthält Kunststoff", "haltbar", "intelligent", "langlebig", 
+"lebensähnlich")
+hist2_names <- c("leicht zerstörbar", "multifunktional", "nachhaltig", 
+"passive Formänderung durch Umwelteinwirkung", "passive Verhaltensänderung durch Umwelteinwirkung", 
+"reaktionsfähig", "robust", "selbstheilend", "selbstreparierend", 
+"technologisch", "umweltfreundlich", "umweltschädlich", "wartungsfrei", 
+"wartungsintensiv", "widerstandsfähig", "zuverlässig", "ökologisch")
+
+
+# adjust aesthetics of ggplot
+ggplot_theme <- theme(axis.title.x = element_blank(),
+                      axis.title.y = element_text(size=12),
+                      axis.text.x = element_text(size=10,hjust=0.5,vjust=0.5,face="plain", colour = "black"),
+                      axis.text.y = element_text(size=12,face="plain", colour = "black"),
+                      panel.border = element_blank(),
+                      axis.line = element_line(colour = "black"),
+                      panel.grid.major = element_blank(),
+                      panel.grid.minor = element_blank(),
+                      panel.background = element_blank())
+
+valenceData %>% filter(text %in% hist1_names) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~text, ncol = 4, nrow = 4) + ggplot_theme
+valenceData %>% filter(text %in% hist2_names) %>%
+  ggplot(aes(x = value)) + geom_histogram() + facet_wrap(~text, ncol = 4, nrow = 5)
+```
+
+
+
+### plot aggregated CAM
+
+```{r}
+#| label: aggregate CAMs
+
+sel_ids <- unique(CAMfiles[[1]]$participantCAM)
+CAMaggregated <- aggregate_CAMs(dat_merged = CAMfiles[[3]], dat_nodes = CAMfiles[[1]],
+                                ids_CAMs = sel_ids)
+
+# plot(CAMaggregated[[2]], vertex.size=diag(CAMaggregated[[1]]) / max(diag(CAMaggregated[[1]]))*20, edge.arrow.size=0.01)
+# plot(CAMaggregated[[2]], vertex.size=(abs(V(CAMaggregated[[2]])$value)+1)*5, edge.arrow.size=0.01)
+
+
+g = CAMaggregated[[2]]
+g2 = simplify(CAMaggregated[[2]])
+# plot(g2, edge.arrow.size=0.01,
+#      vertex.size=diag(CAMaggregated[[1]]) / max(diag(CAMaggregated[[1]]))*20)
+
+E(g2)$weight = sapply(E(g2), function(e) {
+  length(all_shortest_paths(g, from=ends(g2, e)[1], to=ends(g2, e)[2])$res) } )
+E(g2)$weight = E(g2)$weight * 2
+# E(g2)$weight[E(g2)$weight == 1] <- NA
+
+V(g2)$color[V(g2)$value <= .5 & V(g2)$value >= -.5] <- "yellow"
+
+V(g2)$shape <- NA
+V(g2)$shape <- ifelse(test = V(g2)$color == "yellow", yes = "square", no = "circle")
+
+
+
+### > plot multiple times because of random layout
+for(i in 1:3){
+  plot(g2, edge.arrow.size = 0,
+     layout=layout_nicely, vertex.frame.color="black", asp = .5, margin = -0.1,
+     vertex.size=diag(CAMaggregated[[1]]) / max(diag(CAMaggregated[[1]]))*5,
+     vertex.label.cex = .9, 
+     edge.weight=2, edge.width=(E(g2)$weight/35))
+}
+
+
+
+CAMaggregated[[1]][1:5, 1:5]
+```
+
+
+
+	
+## co-variation of basal attributes
+
+Compare the probability that two concepts are connected in randomly generated networks to drawn CAMs:
+
+```{r}
+## get average number of drawn concepts (here fixed)
+numConcepts <- mean(networkIndicators$num_nodes_macro)
+## get average density
+numDensity <- mean(networkIndicators$density_macro)
+
+## simply get the average probability that two concepts are connected:
+g <- igraph::random.graph.game(n = numConcepts, p.or.m = numDensity)
+plot(g)
+are.connected(g, 1, 2)
+
+
+#> whereby each edge to be drawn has the identical probability in the Erdős–Rényi model
+vec_booleanConnected <- c()
+# vec_booleanConnected2 <- c()
+
+for(i in 1:10000){
+  g <- igraph::random.graph.game(n = numConcepts, p.or.m = numDensity)
+  vec_booleanConnected[i] <- are.connected(g, 1, 2)
+    # vec_booleanConnected2[i] <- are.connected(g, 22, 26)
+}
+baselineProbability <- mean(vec_booleanConnected)
+baselineProbability
+# mean(vec_booleanConnected2)
+```
+
+
+
+
+ 
+
+This baseline probability can be compared to all possible combinations of drawn concepts: 
+
+```{r}
+vec_boolean <- c()
+for(i in 1:length(CAMdrawn)){
+  vec_boolean[i] <- are.connected(graph = CAMdrawn[[i]], 
+              v1 = V(CAMdrawn[[i]])[V(CAMdrawn[[i]])$label == "robust"], 
+              v2 = V(CAMdrawn[[i]])[V(CAMdrawn[[i]])$label == "widerstandsfähig"])
+}
+
+mean(vec_boolean)
+```
+
+
+# Analysis
+
+## Latent profile analysis
+just a preliminary analysis to get a feeling for what we've got.
+
+```{r}
+# lpa <- valenceDataShort %>% select(-CAM) %>%
+#  estimate_profiles(1:9, variances = c("equal", "equal", "varying"),
+#                         covariances = c("zero", "equal", "zero"))
+```
+
+## Multilayer community detection
+
+```{r}
+setwd("outputs")
+# recode vertex labels to integers
+attributes_names <- c(hist1_names, hist2_names)
+CAMaggregated[[4]][["node1"]] <- match(CAMaggregated[[4]][["node1"]], attributes_names)
+CAMaggregated[[4]][["node2"]] <- match(CAMaggregated[[4]][["node2"]], attributes_names)
+
+# recode layers (CAM IDs) to integers
+layer_names <- unique(CAMfiles[[1]]$participantCAM)
+CAMaggregated[[4]][["layer"]] <- match(CAMaggregated[[4]][["layer"]], layer_names)
+
+# now we're ready for community extraction using the MultiLayer extraction package
+set.seed(123)
+start_time <- Sys.time()
+#community.object <- multilayer.extraction(adjacency = CAMaggregated[[4]], seed = 123, min.score = 0, prop.sample = .10)
+end_time <- Sys.time()
+end_time - start_time
+
+#saveRDS(community.object, file = "communityobject.Rda")
+community.object <- readRDS(file = "communityobject.Rda")
+
+plot(community.object, main = "Diagnostic Plot")
+
+
+
+
+
+print_communities <- function(community.object, k, m = 192, n = 33) {
+  for(i in 1:k) {
+    object <- refine(community.object, k = k, m = m, n = n)
+    
+    num.layers <- colSums(object$Layers > 0)
+    num.vertices <- colSums(object$Vertices)
+    
+    print(cat(paste0("Community ", i, " contains ", num.vertices[i], " vertices across ", num.layers[i], " layers.")))
+    print(cat(paste0("        ", paste(attributes_names[which(object$Vertices[,i] == 1)], sep = ", "))))
+  }
+}
+
+print_communities(community.object, k = 2)
+
+```
+
