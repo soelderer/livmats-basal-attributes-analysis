@@ -46,7 +46,7 @@ CAMaggregated <- readRDS(file = "CAMaggregated.rds")
 
 networkIndicators <- readRDS(file = "networkIndicators.rds")
 
-
+CAMwordlist <- xlsx::read.xlsx2(file = "CAMwordlist.xlsx", sheetIndex = 1)
 
 ### load functions
 # print(getwd())
@@ -311,6 +311,12 @@ CAMaggregated[[1]][1:5, 1:5]
 
 
 # Clusteranalyses
+
+
+## hierachical cluster analysis
+
+
+
 
 ## Latent profile analysis
 just a preliminary analysis to get a feeling for what we've got.
