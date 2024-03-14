@@ -313,7 +313,88 @@ CAMaggregated[[1]][1:5, 1:5]
 # Clusteranalyses
 
 
+
 ## hierachical cluster analysis
+
+
+```{r}
+hc_dat <- data.frame(CAM = unique(CAMfiles[[1]]$CAM), participantCAM = unique(CAMfiles[[1]]$participantCAM))
+
+### create data set
+## word vars
+for(w in unique(CAMfiles[[1]]$text)){
+  varName_w <- str_remove_all(string = str_to_title(string = w, locale = "en"), pattern = " |\\W+")
+
+  hc_dat[[paste0("N_", varName_w)]] <- NA
+  hc_dat[[paste0("mean_", varName_w)]] <- NA
+  hc_dat[[paste0("SD_", varName_w)]] <- NA
+}
+
+
+## get N, mean, sd of single summarized concepts
+verbose = FALSE
+
+for(c in unique(CAMfiles[[1]]$CAM)){
+  if(verbose){
+      cat("considered CAM: ", c, "\n")
+  }
+  tmp_CAM_nodes <- CAMfiles[[1]][CAMfiles[[1]]$CAM == c, ]
+  tmp_CAM_nodes$value <- ifelse(test = tmp_CAM_nodes$value == 10, yes = 0, no = tmp_CAM_nodes$value)
+
+  for(w in unique(CAMfiles[[1]]$text)){
+      if(verbose){
+    cat("considered concept: ", w, "\n")
+      }
+
+    varName_w <- str_remove_all(string = str_to_title(string = w, locale = "en"), pattern = " |\\W+")
+          if(verbose){
+    cat("   > the freqeuncy, mean, SD are saved with the prefix N_, mean_, SD_ plus
+      word without white spaces: ", varName_w, "\n")
+          }
+
+    if(sum(tmp_CAM_nodes$text == w) > 0){
+      tmp_CAM_nodes_w <- tmp_CAM_nodes[tmp_CAM_nodes$text == w, ]
+
+      ## add N
+      hc_dat[hc_dat$CAM == c, paste0("N_", varName_w)] <- nrow(tmp_CAM_nodes_w)
+      ## add mean
+      hc_dat[hc_dat$CAM == c, paste0("mean_", varName_w)] <- mean(x = tmp_CAM_nodes_w$value)
+      ## add SD, only if > 1
+      hc_dat[hc_dat$CAM == c, paste0("SD_", varName_w)] <- sd(x = tmp_CAM_nodes_w$value)
+    }
+  }
+        if(verbose){
+  cat("\n")
+        }
+}
+
+
+### compute clustering
+hc_df <- hc_dat[, str_subset(string = colnames(hc_dat), pattern = "mean_")]
+hc_df <- hc_df[, colSums(x = !is.na(hc_df)) >= 2] # only considers concepts which where drawn at least 2 times
+
+
+hc_df_scaled <- scale(hc_df)
+
+dist.eucl <- dist(hc_df_scaled, method = "euclidean")
+
+hc_cluster <- hclust(dist.eucl, method = "ward.D2") # Ward's method
+hc_cluster
+
+
+set_cutOff <- 20
+
+
+plot(hc_cluster)
+abline(h = set_cutOff, col = "red", lty = 2)
+rect.hclust(hc_cluster, h=set_cutOff, border = "tomato")
+
+groups <- cutree(hc_cluster, h=set_cutOff)
+# groupsOut <- names(table(groups))[table(groups) >= 2]
+
+table(groups)
+aggregate(hc_df, by=list(cluster=groups), mean, na.rm = TRUE)  
+```
 
 
 
