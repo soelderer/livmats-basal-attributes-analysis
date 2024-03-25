@@ -129,11 +129,42 @@ if(!all(ids_CAMs %in% dat_nodes$CAM)){
   ### title font vertex attributes:
   V(g_agg)$label.font <- 1 # 2 = bold
 
+  
+  
+  multigraph_adj_matrix_list <- list()
+  
+  for(i in 1:length(sel_drawn_CAM)){
+    tmp_adjmat <- matrix(data = 0, nrow = length(unique(sel_dat_nodes$text)),
+                         ncol = length(unique(sel_dat_nodes$text)))
+    
+    rownames(tmp_adjmat) <- unique(sel_dat_nodes$text)
+    colnames(tmp_adjmat) <- unique(sel_dat_nodes$text)
+
+    ## add 1 if edges are connected
+    tmp_labels <- cbind(V(sel_drawn_CAM[[i]])$name, V(sel_drawn_CAM[[i]])$label)
+    tmp_edges <- as_edgelist(sel_drawn_CAM[[i]])
+
+    for(j in 1:nrow(tmp_labels)){
+      tmp_edges[,1][tmp_edges[,1] %in% tmp_labels[j,1]] <- tmp_labels[j,2]
+      tmp_edges[,2][tmp_edges[,2] %in% tmp_labels[j,1]] <- tmp_labels[j,2]
+    }
+
+    for(k in 1:nrow(tmp_edges)){
+      tmp_adjmat[rownames(tmp_adjmat) == tmp_edges[k,1], colnames(tmp_adjmat) == tmp_edges[k,2]] <-
+        tmp_adjmat[rownames(tmp_adjmat) == tmp_edges[k,1], colnames(tmp_adjmat) == tmp_edges[k,2]] + 1
+    }
+    
+    # we'll use participant CAM ID as identifier for the layer for now
+    
+    # append it to the collector data frame
+    multigraph_adj_matrix_list[[names(sel_drawn_CAM[i])]] <- tmp_adjmat
+  }
+  
 
   # names for the multigraph edgelist
   names(multigraph_edgelist) <- c("node1", "node2", "layer")
 
-  out_list <- list(adjmat, g_agg, sel_dat_nodes, multigraph_edgelist)
+  out_list <- list(adjmat, g_agg, sel_dat_nodes, multigraph_edgelist, multigraph_adj_matrix_list)
 
   return(out_list)
 }

@@ -30,9 +30,10 @@ p_load('tidyverse', 'jsonlite', 'magrittr', 'xlsx',
        'stargazer', 'psych', 'jtools', 'DT', 'ggstatsplot', 
        'lavaan', 
        'regsem', 'MplusAutomation', 'igraph', 'shiny', 'ggplot2', 'tidyLPA', 'MultilayerExtraction',
-       'Matrix', 'igraph', 'foreach', 'doParallel', 'parallel')
+       'Matrix', 'igraph', 'foreach', 'doParallel', 'parallel', 'R.matlab')
  
 
+multilayer_extraction_results <- readRDS(file = "outputs/multilayer_extraction_results.Rda")
 
 setwd("outputs/01_dataPreperation/final")
 ### load questionnaire
@@ -47,6 +48,7 @@ CAMaggregated <- readRDS(file = "CAMaggregated.rds")
 networkIndicators <- readRDS(file = "networkIndicators.rds")
 
 CAMwordlist <- xlsx::read.xlsx2(file = "CAMwordlist.xlsx", sheetIndex = 1)
+
 
 ### load functions
 # print(getwd())
@@ -169,6 +171,9 @@ valenceData %>% filter(text %in% hist2_names_transitivity) %>%
 
 ## Multilayer community detection
 
+### MultilayerExtraction
+Community detection with the MultilayerExtraction-Algorithm (https://github.com/jdwilson4/MultilayerExtraction)
+
 ```{r}
 setwd("outputs")
 # recode vertex labels to integers
@@ -183,36 +188,84 @@ CAMaggregated[[4]][["layer"]] <- match(CAMaggregated[[4]][["layer"]], layer_name
 # now we're ready for community extraction using the MultiLayer extraction package
 set.seed(123)
 start_time <- Sys.time()
-#community.object <- multilayer.extraction(adjacency = CAMaggregated[[4]], seed = 123, min.score = 0, prop.sample = .10)
+#multilayer_extraction_results <- multilayer.extraction(adjacency = CAMaggregated[[4]], seed = 123, min.score = 0, prop.sample = .10)
 end_time <- Sys.time()
 end_time - start_time
 
-#saveRDS(community.object, file = "communityobject.Rda")
-community.object <- readRDS(file = "communityobject.Rda")
+#saveRDS(multilayer_extraction_results, file = "multilayer_extraction_results.Rda")
 
-plot(community.object, main = "Diagnostic Plot")
-
+plot(multilayer_extraction_results, main = "Diagnostic Plot")
 
 
+# look at the first ... 20 communities
+multilayer_extraction_communities <- data.frame(n_communities = seq(1:20))
+multilayer_extraction_communities[paste0("community", 1:20)] <- NA
 
-
-print_communities <- function(community.object, k, m = 192, n = 33) {
-  for(i in 1:k) {
-    object <- refine(community.object, k = k, m = m, n = n)
-    
-    num.layers <- colSums(object$Layers > 0)
-    num.vertices <- colSums(object$Vertices)
-    
-    print(cat(paste0("Community ", i, " contains ", num.vertices[i], " vertices across ", num.layers[i], " layers.")))
-    print(cat(paste0("        ", paste(attributes_names[which(object$Vertices[,i] == 1)], sep = ", "))))
+for(i in 1:20) {
+  object <- refine(multilayer_extraction_results, k = i, m = 192, n = nrow(CAMwordlist))
+  
+  for(j in 1:i) {
+    multilayer_extraction_communities[i,j+1] <- paste(attributes_names[which(object$Vertices[,j] == 1)], collapse = ", ")
   }
 }
 
-print_communities(community.object, k = 2)
-
+DT::datatable(multilayer_extraction_communities, options = list(pageLength = 5)) 
 ```
 
 
+### GenLouvain
+Community detection with the generalized Louvain algorithm as proposed by Mucha et al. (2010).
+
+Re-import the results from GenLouvain as processed by MATLAB.
+
+```{r}
+genlouvain <- readMat("outputs/genlouvain_results.mat", drop = "singletonLists")
+genlouvain <- unlist(genlouvain, recursive = FALSE)
+
+genlouvain_results <- list()
+
+for(i in 1:length(genlouvain)) {
+  tmp_result <- unlist(unlist(genlouvain[[i]], recursive = FALSE)[[1]], recursive = FALSE)
+  tmp_result <- matrix(data = tmp_result, nrow = nrow(CAMwordlist), ncol = length(CAMaggregated[[5]]))
+  rownames(tmp_result) <- rownames(CAMaggregated[[5]][[1]])
+  colnames(tmp_result) <- names(CAMaggregated[[5]])
+  
+  # named list with parameter 'omega' as name and attribute
+  attributes(tmp_result)$omega <- unlist(unlist(genlouvain[[i]], recursive = FALSE)[[4]], recursive = FALSE)
+  genlouvain_results[[paste0("omega", unlist(unlist(genlouvain[[i]], recursive = FALSE)[[4]], recursive = FALSE))]] <- 
+    tmp_result
+}
+```
+
+Number of communities found:
+```{r}
+for(i in 1:length(genlouvain_results)) {
+  print(paste("Found", length(unique(as.vector(genlouvain_results[[i]]))), "communities with ",
+              names(genlouvain_results)[i]))
+}
+```
+
+Take a look at the communities:
+
+```{r}
+
+genlouvain_communities <- data.frame(omega = seq(0.1, 1, 0.1), community1 = NA, community2 = NA, community3 = NA,
+                                     community4 = NA, community5 = NA)
+
+# omega = 0 with no coupling of the slices is not interesting, there are >900 communities.
+# therefore we start at index 2 (omega = 0.1)
+genlouvain_results <- genlouvain_results[-1]
+
+for(i in 1:length(genlouvain_results)) {
+  for(j in 1:max(unlist(genlouvain_results))) {
+    genlouvain_communities[i, j+1] <- paste(rownames(genlouvain_results[[i]])[genlouvain_results[[i]][,1] == j], collapse=", ")
+  }
+}
+
+DT::datatable(genlouvain_communities, options = list(pageLength = 5)) 
+
+```
+	
 	
 ## random graph - delete me
 
@@ -407,4 +460,5 @@ just a preliminary analysis to get a feeling for what we've got.
 #  estimate_profiles(1:9, variances = c("equal", "equal", "varying"),
 #                         covariances = c("zero", "equal", "zero"))
 ```
+
 

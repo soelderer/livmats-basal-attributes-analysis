@@ -44,7 +44,7 @@ p_load('tidyverse', 'jsonlite', 'magrittr', 'xlsx',
        'stargazer', 'psych', 'jtools', 'DT', 'ggstatsplot', 
        'lavaan', 
        'regsem', 'MplusAutomation', 'igraph', 'shiny', 'ggplot2', 'tidyLPA', 'MultilayerExtraction',
-       'Matrix', 'igraph', 'foreach', 'doParallel', 'parallel')
+       'Matrix', 'igraph', 'foreach', 'doParallel', 'parallel', 'R.matlab')
  
 
 ### list data files
@@ -764,6 +764,9 @@ if (length(vec_delete) > 1) {
     # save aggregated CAMs
     ## save as R object
     saveRDS(CAMaggregated_clean, file = "CAMaggregated.rds")
+    
+    # export to MATLAB for use with GenLouvain
+    writeMat(con="CAMaggregated_adj_matrices.mat", multigraph_adj_matrices_list = CAMaggregated_clean[[5]])
     
     cat("clean data sets have been sucessfully saved")
   }
